@@ -99,12 +99,13 @@
   #mArt.none { visibility: hidden; }
   #mNote { position: absolute; left: 8px; top: 8px; width: 36px; height: 36px; border-radius: 8px; text-align: center;
     line-height: 36px; font-size: 18px; color: #636366; background: linear-gradient(135deg, #3a3a3c, #232326); }
-  #mInfo { position: absolute; left: 54px; right: 116px; top: 9px; }
+  #mInfo { position: absolute; left: 54px; right: 151px; top: 9px; }
   #mTitle { font-size: 12.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   #mArtist { font-size: 10.5px; color: #8e8e93; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  #mProg { position: absolute; left: 54px; right: 116px; bottom: 8px; height: 3px; border-radius: 2px; background: rgba(255,255,255,.12); overflow: hidden; }
+  #mProg { position: absolute; left: 54px; right: 151px; bottom: 8px; height: 3px; border-radius: 2px; background: rgba(255,255,255,.12); overflow: hidden; }
   #mProg i { display: block; height: 100%; width: 0; background: rgba(255,255,255,.75); border-radius: 2px; }
-  #mBtns { position: absolute; right: 8px; top: 9px; width: 104px; height: 34px; }
+  #mBtns { position: absolute; right: 8px; top: 9px; width: 139px; height: 34px; }
+  #mShuf { margin-left: 1px; }
   .mb { float: left; width: 34px; height: 34px; border-radius: 17px; position: relative; }
   .mb svg { position: absolute; left: 9px; top: 9px; }
   .mb.play { background: #f5f5f7; margin: 0 1px; }
@@ -189,6 +190,7 @@
         <div class="mb" id="mPrev"><svg width="16" height="16" viewBox="0 0 16 16"><path d="M3.5 3v10M12.5 3.6v8.8L5.8 8z" fill="#f5f5f7" stroke="#f5f5f7" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/></svg></div>
         <div class="mb play" id="mPlay"></div>
         <div class="mb" id="mNext"><svg width="16" height="16" viewBox="0 0 16 16"><path d="M12.5 3v10M3.5 3.6v8.8L10.2 8z" fill="#f5f5f7" stroke="#f5f5f7" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/></svg></div>
+        <div class="mb" id="mShuf"><svg width="16" height="16" viewBox="0 0 16 16"><path d="M1.5 4.5h2.5c3.5 0 4.5 7 8 7h2.5M1.5 11.5h2.5c3.5 0 4.5-7 8-7h2.5M12.5 2.5l2 2-2 2M12.5 9.5l2 2-2 2" fill="none" stroke="#f5f5f7" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/></svg></div>
       </div>
     </div>
     <div id="net" class="card">
@@ -661,6 +663,7 @@
   tap($('mPlay'), function () { setPlayIcon(!track.playing); track.playing = !track.playing; media('playpause'); });
   tap($('mNext'), function () { media('next'); });
   tap($('mPrev'), function () { media('previous'); });
+  tap($('mShuf'), function () { media('shuffle'); toast('Shuffling Apple Music'); });
   tap($('mInfo'), function () { media('open'); toast('Opening the player on the Mac'); });
   setPlayIcon(false);
 

@@ -97,14 +97,32 @@ final class Music {
         }
     }
 
-    /// cmd: playpause | next | previous. Goes to the app shown on the deck.
+    /// cmd: playpause | next | previous | shuffle. Goes to the app shown on the deck
+    /// (shuffle always uses Apple Music).
     func control(_ cmd: String) {
+        if cmd == "shuffle" { return shuffleMusic() }
         queue.async {
             let app = (self.current["app"] as? String) ?? Music.defaultApp
             let verb = ["playpause": "playpause", "next": "next track", "previous": "previous track"][cmd]
             guard let verb else { return }
             _ = Music.osascript("tell application \"\(app)\" to \(verb)")
             Thread.sleep(forTimeInterval: 0.25)   // let the player switch tracks before re-reading
+            self.refresh()
+        }
+    }
+
+    /// Opens Apple Music, turns on shuffle (by song) and starts playing the whole library.
+    func shuffleMusic() {
+        queue.async {
+            _ = Music.osascript("""
+            tell application "Music"
+              activate
+              set shuffle enabled to true
+              set shuffle mode to songs
+              play library playlist 1
+            end tell
+            """)
+            Thread.sleep(forTimeInterval: 0.5)
             self.refresh()
         }
     }
