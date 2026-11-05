@@ -19,11 +19,54 @@
     font: 13px -apple-system, "SF Pro Text", "Helvetica Neue", sans-serif; -webkit-font-smoothing: antialiased;
     -webkit-user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: rgba(0,0,0,0); }
   /* Everything is laid out on a stage 320pt tall; its width follows the screen (480 on a 4S, wider on modern phones). */
-  #stage { position: absolute; left: 0; top: 0; width: 480px; height: 320px; overflow: hidden;
+  #stage { position: absolute; z-index: 1; left: 0; top: 0; width: 480px; height: 320px; overflow: hidden;
     -webkit-transform-origin: 0 0; transform-origin: 0 0; }
   /* Measures the notch / Dynamic Island / home-indicator insets (0 on old iOS, which ignores env()). */
   #safe { position: fixed; left: 0; top: 0; visibility: hidden; pointer-events: none;
     padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+  /* ---- animated sky (Apple Weather style), driven by the first weather city ---- */
+  #sky { position: fixed; left: 0; top: 0; right: 0; bottom: 0; overflow: hidden; pointer-events: none; z-index: 0;
+    opacity: 0; -webkit-transition: opacity 1.5s; transition: opacity 1.5s; }
+  #sky.on { opacity: 1; }
+  #sky div { position: absolute; }
+  .s-clear-d, .s-partly-d { background: linear-gradient(180deg, #2c6cc7 0%, #4f8fdc 50%, #8bbdec 100%); }
+  .s-clear-n, .s-partly-n { background: linear-gradient(180deg, #050a1c 0%, #0d1a38 55%, #1a2b52 100%); }
+  .s-cloudy-d { background: linear-gradient(180deg, #56687d 0%, #74879b 55%, #93a4b5 100%); }
+  .s-cloudy-n { background: linear-gradient(180deg, #11161f 0%, #1b2330 55%, #283342 100%); }
+  .s-fog-d    { background: linear-gradient(180deg, #7a838c 0%, #959da5 55%, #b0b7bd 100%); }
+  .s-fog-n    { background: linear-gradient(180deg, #1d2127 0%, #2a2f36 55%, #3a4048 100%); }
+  .s-rain-d   { background: linear-gradient(180deg, #364555 0%, #4c5c6e 55%, #687a8c 100%); }
+  .s-rain-n   { background: linear-gradient(180deg, #0b1118 0%, #151d28 55%, #212c39 100%); }
+  .s-snow-d   { background: linear-gradient(180deg, #6a7f96 0%, #8a9db1 55%, #b4c3d1 100%); }
+  .s-snow-n   { background: linear-gradient(180deg, #172131 0%, #233046 55%, #34445b 100%); }
+  .s-storm-d  { background: linear-gradient(180deg, #262c38 0%, #353d4c 55%, #4a5363 100%); }
+  .s-storm-n  { background: linear-gradient(180deg, #080b11 0%, #12161f 55%, #1d222d 100%); }
+  .sun  { -webkit-animation: skyGlow 9s ease-in-out infinite alternate; animation: skyGlow 9s ease-in-out infinite alternate; }
+  .star { width: 2px; height: 2px; border-radius: 1px; background: #fff;
+    -webkit-animation: skyTwinkle 3s ease-in-out infinite alternate; animation: skyTwinkle 3s ease-in-out infinite alternate; }
+  .cloud, .haze { left: 0; -webkit-animation-name: skyDrift; animation-name: skyDrift;
+    -webkit-animation-timing-function: linear; animation-timing-function: linear;
+    -webkit-animation-iteration-count: infinite; animation-iteration-count: infinite; }
+  .drop, .flake { top: 0; -webkit-animation-timing-function: linear; animation-timing-function: linear;
+    -webkit-animation-iteration-count: infinite; animation-iteration-count: infinite; }
+  .drop  { width: 1px; background: linear-gradient(180deg, rgba(255,255,255,0), rgba(220,232,255,.55));
+    -webkit-animation-name: skyFall; animation-name: skyFall; }
+  .flake { border-radius: 50%; background: rgba(255,255,255,.85); -webkit-animation-name: skySnow; animation-name: skySnow; }
+  .flash { left: 0; top: 0; right: 0; bottom: 0; background: #dde6ff; opacity: 0;
+    -webkit-animation: skyFlash 11s infinite; animation: skyFlash 11s infinite; }
+  @-webkit-keyframes skyGlow { from { opacity: .8; } to { opacity: 1; } }
+  @keyframes skyGlow { from { opacity: .8; } to { opacity: 1; } }
+  @-webkit-keyframes skyTwinkle { from { opacity: .15; } to { opacity: .9; } }
+  @keyframes skyTwinkle { from { opacity: .15; } to { opacity: .9; } }
+  @-webkit-keyframes skyFlash { 0%, 90%, 100% { opacity: 0; } 90.6% { opacity: .5; } 91.4% { opacity: 0; } 92.4% { opacity: .3; } 93.4% { opacity: 0; } }
+  @keyframes skyFlash { 0%, 90%, 100% { opacity: 0; } 90.6% { opacity: .5; } 91.4% { opacity: 0; } 92.4% { opacity: .3; } 93.4% { opacity: 0; } }
+  /* Cards turn into darker frosted glass so they stay readable on a bright sky. */
+  body.sky .card { background: rgba(8,16,32,.30); box-shadow: inset 0 0 0 .5px rgba(255,255,255,.16); }
+  body.sky.glass .card { -webkit-backdrop-filter: blur(18px) saturate(1.3); backdrop-filter: blur(18px) saturate(1.3); }
+  body.sky .card h3, body.sky .foot, body.sky #mArtist, body.sky .big small, body.sky #wxSub, body.sky .sub { color: rgba(235,240,250,.78); }
+  body.sky #status { text-shadow: 0 1px 3px rgba(0,0,0,.28); }
+  body.sky #status * { color: #fff; }
+  @media (prefers-reduced-motion: reduce) { #sky div { -webkit-animation: none !important; animation: none !important; } }
   .view { position: absolute; left: 0; top: 0; right: 0; bottom: 0; display: none; }
   .view.on { display: block; }
 
@@ -92,6 +135,18 @@
   .chip b.low { color: #ff453a; }
   .chip b.chg { color: #30d158; }
   .empty-note { font-size: 10px; color: #636366; }
+  /* Weather: one place at a time, rotating; tap for the next */
+  #wx h3 { white-space: nowrap; overflow: hidden; }
+  #wxTime { float: right; letter-spacing: 0; }
+  #wxBody { -webkit-transition: opacity .3s; transition: opacity .3s; }
+  #wxBody.fade { opacity: 0; }
+  #wxLine { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 26px; }
+  #wxTemp { font-size: 19px; font-weight: 600; letter-spacing: -.6px; }
+  #wxSub { font-size: 10.5px; color: #c7c7cc; margin-left: 5px; }
+  #wxIcon { position: absolute; right: 11px; top: 25px; font-size: 19px; line-height: 22px; }
+  #wxDots { position: absolute; left: 0; right: 0; bottom: 4px; text-align: center; font-size: 0; }
+  #wxDots i { display: inline-block; width: 4px; height: 4px; border-radius: 2px; margin: 0 2px; background: #48484a; }
+  #wxDots i.on { background: #c7c7cc; }
   /* ---- now playing ---- */
   #music { position: absolute; height: 52px; padding: 0; }
   #mArt { position: absolute; left: 8px; top: 8px; width: 36px; height: 36px; border-radius: 8px;
@@ -158,6 +213,16 @@
   #edit .btns { position: absolute; right: 10px; top: 10px; margin: 0; }
   #editCount { position: absolute; left: 12px; top: 44px; font-size: 10px; color: #8e8e93; }
   #editList { position: absolute; left: 6px; right: 6px; top: 60px; bottom: 0; overflow-y: scroll; -webkit-overflow-scrolling: touch; }
+  #wxEdit .sheet { left: 8px; right: 8px; width: auto; margin-left: 0; top: 8px; bottom: 8px; padding: 10px 10px 0; }
+  #wxQ { position: absolute; left: 10px; right: 150px; top: 10px; height: 28px; box-sizing: border-box; border: 0; border-radius: 9px;
+    background: #2c2c2e; color: #fff; padding: 0 10px; font-size: 13px; outline: none; -webkit-user-select: text; }
+  #wxEdit .btns { position: absolute; right: 10px; top: 10px; margin: 0; }
+  #wxCount { position: absolute; left: 12px; top: 44px; font-size: 10px; color: #8e8e93; }
+  #wxList { position: absolute; left: 6px; right: 6px; top: 60px; bottom: 0; overflow-y: scroll; -webkit-overflow-scrolling: touch; }
+  .erow.city .nm { left: 30px; right: 74px; }
+  .erow.city .nm span { color: #8e8e93; font-size: 11px; margin-left: 6px; }
+  .erow .rm { position: absolute; right: 38px; top: 4px; width: 30px; height: 26px; line-height: 26px; text-align: center; color: #ff453a; }
+  .wxHead { font-size: 10px; font-weight: 600; letter-spacing: .5px; text-transform: uppercase; color: #8e8e93; padding: 12px 6px 4px; }
   .erow { height: 34px; position: relative; border-bottom: .5px solid rgba(255,255,255,.08); }
   .erow img { position: absolute; left: 30px; top: 4px; width: 26px; height: 26px; }
   .erow .nm { position: absolute; left: 64px; right: 40px; top: 9px; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -175,10 +240,11 @@
 </head>
 <body>
 <div id="safe"></div>
+<div id="sky"><style id="skyKf"></style></div>
 <div id="stage">
   <div id="toast"></div>
 
-  <!-- The deck: 8 keys + widgets -->
+  <!-- The deck: 10 keys + widgets -->
   <div id="deck" class="view on">
     <div id="keys"></div>
     <div id="hint">Hold any key to choose apps</div>
@@ -200,6 +266,11 @@
       <canvas id="spark" width="208" height="36"></canvas>
     </div>
     <div id="bat" class="card"><h3>Batteries</h3><div id="batList"></div></div>
+    <div id="wx" class="card">
+      <h3><span id="wxTime"></span><span id="wxName">Weather</span></h3>
+      <div id="wxBody"><div id="wxLine"><span id="wxTemp">–</span><span id="wxSub"></span></div><div id="wxIcon"></div></div>
+      <div id="wxDots"></div>
+    </div>
   </div>
 
   <!-- Modern iPhones only: camera + mic to the Mac (needs HTTPS) -->
@@ -245,6 +316,16 @@
       <div class="btns"><div class="btn primary" id="editSave">Save</div><div class="btn" id="editCancel">Cancel</div></div>
       <div id="editCount"></div>
       <div id="editList"></div>
+    </div>
+  </div>
+
+  <!-- Choose the weather cities (hold the weather tile) -->
+  <div id="wxEdit" class="scrim">
+    <div class="sheet">
+      <input id="wxQ" placeholder="Search a city, e.g. Little Elm, TX" autocorrect="off" autocapitalize="words">
+      <div class="btns"><div class="btn primary" id="wxSave">Save</div><div class="btn" id="wxCancel">Cancel</div></div>
+      <div id="wxCount"></div>
+      <div id="wxList"></div>
     </div>
   </div>
 
@@ -324,12 +405,12 @@
   }
   function layout() {
     // Compact widgets: Internet (number + small graph) and Batteries (icon + %), stacked in one narrow column.
-    var net = $('net'), bat = $('bat'), cardW, netH = 104, batH;
-    net.className = bat.className = 'card';
+    var net = $('net'), bat = $('bat'), wx = $('wx'), cardW, netH = 104, batH, wxH = 58;
+    net.className = bat.className = wx.className = 'card';
     $('hint').style.display = 'none';
     if (portrait) {
       // Everything in one centered stack: keys, now playing, then the two widgets side by side.
-      var stackH = 208 + 8 + 58 + 12 + netH, top = Math.max(90, Math.round((H - stackH) / 2) + 10);
+      var stackH = 208 + 8 + 58 + 12 + netH + 10 + wxH, top = Math.max(90, Math.round((H - stackH) / 2) + 10);
       $('seg').style.top = '50px';
       px($('keys'), { left: (W - 312) / 2, top: top });
       px($('music'), { left: 16, top: top + 208 + 4, width: W - 32 });
@@ -337,6 +418,7 @@
       var cardTop = top + 208 + 4 + 58 + 12;
       px(net, { left: 16, top: cardTop, width: cardW, height: netH });
       px(bat, { left: 16 + cardW + 10, top: cardTop, width: cardW });
+      px(wx, { left: 16, top: cardTop + netH + 10, width: W - 32, height: wxH });
       var pvH = Math.round((W - 32) * 3 / 4);
       px($('pvBox'), { left: 16, top: 72, width: W - 32, height: pvH });
       px($('pCtl'), { left: 16, top: 72 + pvH + 14, width: W - 32 });
@@ -348,18 +430,19 @@
       var keysLeft = 16 + Math.max(0, (keysArea - 312) / 2);
       px($('keys'), { left: keysLeft, top: 52 });
       px($('music'), { left: 16, top: 252, width: Math.max(312, keysArea) });
-      batH = 304 - (52 + netH + 10);
+      batH = 304 - (52 + netH + 10) - (wxH + 10);             // weather sits at the bottom of the column
       px(net, { left: colLeft, top: 52, width: cardW, height: netH });
       px(bat, { left: colLeft, top: 52 + netH + 10, width: cardW });
+      px(wx, { left: colLeft, top: 304 - wxH, width: cardW, height: wxH });
       var ctlW = W >= 640 ? 180 : 150;
       px($('pvBox'), { left: 16, top: 42, width: W - 32 - ctlW - 12, height: 264 });
       px($('pCtl'), { left: W - 16 - ctlW, top: 42, width: ctlW });
     }
-    batteryRows = Math.max(2, Math.floor((batH - 40) / 30)) * 2;   // max chips that fit, two per row
+    batteryRows = Math.max(1, Math.floor((batH - 40) / 30)) * 2;   // max chips that fit, two per row
     var spark = $('spark'), sw = cardW - 24, sh = 18;
     spark.width = sw * 2; spark.height = sh * 2;
     px(spark, { width: sw, height: sh });
-    drawSpark(lastHistory); renderBatteries(lastBatteries);
+    drawSpark(lastHistory); renderBatteries(lastBatteries); renderWeather();
   }
   window.addEventListener('resize', fit);
   window.addEventListener('orientationchange', function () { setTimeout(fit, 300); });
@@ -609,6 +692,229 @@
       box.appendChild(c);
     });
   }
+  // ---------- animated sky (Apple Weather style) from the first city ----------
+  // Built from CSS gradients and transforms only (no blur filters, no canvas) so the iPhone 4S keeps up.
+  var skyKey = '', skyLite = !modern;
+  function skyKind(code) {
+    if (code <= 1) return 'clear';
+    if (code === 2) return 'partly';
+    if (code === 3) return 'cloudy';
+    if (code === 45 || code === 48) return 'fog';
+    if ((code >= 71 && code <= 77) || code === 85 || code === 86) return 'snow';
+    if (code >= 95) return 'storm';
+    if (code >= 51) return 'rain';
+    return 'cloudy';
+  }
+  function rnd(a, b) { return a + Math.random() * (b - a); }
+  function kf(name, body) { return '@-webkit-keyframes ' + name + ' {' + body.replace(/transform/g, '-webkit-transform') + '} @keyframes ' + name + ' {' + body + '}'; }
+  function anim(name, dur, delay) {
+    var v = name + ' ' + dur.toFixed(2) + 's ' + delay.toFixed(2) + 's';
+    return '-webkit-animation:' + v + ';animation:' + v + ';-webkit-animation-timing-function:linear;animation-timing-function:linear;' +
+      '-webkit-animation-iteration-count:infinite;animation-iteration-count:infinite;';
+  }
+  function puff(x, y, w, h, rgb, a) {
+    // One soft blob that fades to fully transparent exactly at its own edge (closest-side), so no hard corners.
+    return '<div style="left:' + x + '%;top:' + y + '%;width:' + w + '%;height:' + h + '%;' +
+      'background:radial-gradient(ellipse closest-side, rgba(' + rgb + ',' + a.toFixed(2) + ') 0%, rgba(' + rgb + ',' + (a * .55).toFixed(2) + ') 45%, rgba(' + rgb + ',0) 100%);"></div>';
+  }
+  function cloudPuffs(rgb, a) {
+    // A cumulus-like cloud from a few overlapping blobs.
+    return puff(0, 30, 55, 65, rgb, a * .85) + puff(22, 5, 50, 80, rgb, a) + puff(45, 22, 55, 70, rgb, a * .9) + puff(15, 45, 75, 50, rgb, a * .8);
+  }
+  function buildSky(p, force) {
+    var sky = $('sky');
+    if (!p) { sky.className = ''; document.body.className = ''; skyKey = ''; return; }
+    var kind = skyKind(p.code), day = p.day, sw = window.innerWidth, sh = window.innerHeight;
+    var key = kind + (day ? 'd' : 'n') + sw + 'x' + sh;
+    if (key === skyKey && !force) return;
+    skyKey = key;
+    var n = skyLite ? .5 : 1, html = '', i, w, h;
+    var cloudW = Math.max(sw, sh) * .9;
+    var css = kf('skyDrift', 'from { transform: translate3d(' + (-cloudW) + 'px,0,0); } to { transform: translate3d(' + sw + 'px,0,0); }') +
+      kf('skyFall', 'from { transform: translate3d(0,-40px,0); } to { transform: translate3d(0,' + Math.round(sh * 1.4 + 40) + 'px,0); }') +
+      kf('skySnow', '0% { transform: translate3d(0,-10px,0); } 50% { transform: translate3d(18px,' + Math.round(sh / 2) + 'px,0); } 100% { transform: translate3d(-6px,' + (sh + 10) + 'px,0); }');
+
+    // Sun glow (day) or moon glow and stars (night) on clear and partly cloudy skies.
+    if (kind === 'clear' || kind === 'partly') {
+      if (day) {
+        w = Math.max(sw, sh) * 1.5;
+        html += '<div class="sun" style="left:' + (-w * .35) + 'px;top:' + (-w * .45) + 'px;width:' + w + 'px;height:' + w + 'px;' +
+          'background:radial-gradient(circle, rgba(255,246,214,.75) 0%, rgba(255,232,170,.30) 18%, rgba(255,232,170,0) 50%);"></div>';
+      } else {
+        w = Math.max(sw, sh) * .7;
+        html += '<div style="right:' + (-w * .3) + 'px;top:' + (-w * .35) + 'px;width:' + w + 'px;height:' + w + 'px;' +
+          'background:radial-gradient(circle, rgba(200,215,255,.22) 0%, rgba(200,215,255,0) 50%);"></div>';
+        for (i = 0; i < 70 * n; i++) {
+          html += '<div class="star" style="left:' + rnd(0, 100).toFixed(1) + '%;top:' + rnd(0, 70).toFixed(1) + '%;' +
+            '-webkit-animation-delay:' + rnd(-4, 0).toFixed(2) + 's;animation-delay:' + rnd(-4, 0).toFixed(2) + 's;' +
+            '-webkit-animation-duration:' + rnd(2, 5).toFixed(2) + 's;animation-duration:' + rnd(2, 5).toFixed(2) + 's;' +
+            (Math.random() < .2 ? 'width:3px;height:3px;' : '') + '"></div>';
+        }
+      }
+    }
+    // Clouds drifting slowly left to right, at a few depths.
+    var clouds = { partly: 3, cloudy: 6, rain: 6, storm: 6, snow: 5 }[kind] || 0;
+    var rgb = day ? (kind === 'partly' ? '255,255,255' : kind === 'snow' ? '236,242,250' : kind === 'cloudy' ? '214,222,232' : '150,164,180')
+                  : (kind === 'partly' ? '120,135,165' : '70,82,100');
+    for (i = 0; i < Math.ceil(clouds * (skyLite ? .7 : 1)); i++) {
+      var depth = i / Math.max(1, clouds - 1);                 // 0 = far (small, slow) … 1 = near (big, faster)
+      w = cloudW * (.55 + depth * .6); h = w * .42;
+      var dur = rnd(140, 220) - depth * 60;
+      html += '<div class="cloud" style="top:' + (rnd(-.15, .45) * sh).toFixed(0) + 'px;width:' + w.toFixed(0) + 'px;height:' + h.toFixed(0) + 'px;' +
+        anim('skyDrift', dur, -rnd(0, dur)) + '">' + cloudPuffs(rgb, (kind === 'partly' ? .6 : .5) + depth * .3) + '</div>';
+    }
+    // Fog: wide, soft bands sliding across.
+    if (kind === 'fog') {
+      for (i = 0; i < 4; i++) {
+        w = cloudW * 1.6; h = sh * .45;
+        html += '<div class="haze" style="top:' + (sh * (i * .22 - .05)).toFixed(0) + 'px;width:' + w.toFixed(0) + 'px;height:' + h.toFixed(0) + 'px;' +
+          'background:radial-gradient(ellipse closest-side, rgba(225,230,236,' + (day ? .45 : .14) + ') 0%, rgba(225,230,236,0) 100%);' +
+          anim('skyDrift', 160 + i * 25, -rnd(0, 160)) + '"></div>';
+      }
+    }
+    // Rain streaks (with lightning for storms) or falling snow.
+    if (kind === 'rain' || kind === 'storm') {
+      // Drops fall straight down inside a slightly tilted, oversized layer, so the rain slants.
+      html += '<div style="left:-20%;top:-20%;width:140%;height:140%;-webkit-transform:rotate(12deg);transform:rotate(12deg);">';
+      for (i = 0; i < (kind === 'storm' ? 90 : 70) * n; i++) {
+        var len = rnd(14, 30), fall = rnd(.55, .95);
+        html += '<div class="drop" style="left:' + rnd(0, 100).toFixed(1) + '%;height:' + len.toFixed(0) + 'px;opacity:' + rnd(.35, .9).toFixed(2) + ';' +
+          anim('skyFall', fall, -rnd(0, fall)) + '"></div>';
+      }
+      html += '</div>';
+      if (kind === 'storm') html += '<div class="flash"></div>';
+    }
+    if (kind === 'snow') {
+      for (i = 0; i < 60 * n; i++) {
+        var size = rnd(2, 5.5), fallS = rnd(7, 14) * (4 / size);
+        html += '<div class="flake" style="left:' + rnd(0, 100).toFixed(1) + '%;width:' + size.toFixed(1) + 'px;height:' + size.toFixed(1) + 'px;' +
+          'opacity:' + rnd(.5, .95).toFixed(2) + ';' + anim('skySnow', Math.min(fallS, 20), -rnd(0, 20)) + '"></div>';
+      }
+    }
+    sky.innerHTML = '<style id="skyKf">' + css + '</style>' + html;
+    sky.className = 'on s-' + kind + '-' + (day ? 'd' : 'n');
+    document.body.className = 'sky' + (modern ? ' glass' : '');
+  }
+  window.addEventListener('resize', function () { if (places.length) buildSky(places[0], true); });
+
+  // ---------- weather (rotates through the places set in Weather.swift) ----------
+  var places = [], wxIdx = 0, wxUpdating = 0;
+  function wxLook(code, day) {
+    if (code === 0) return day ? ['Clear', '\u2600\uFE0F'] : ['Clear', '\uD83C\uDF19'];
+    if (code <= 2) return ['Partly cloudy', day ? '\u26C5' : '\u2601\uFE0F'];
+    if (code === 3) return ['Cloudy', '\u2601\uFE0F'];
+    if (code === 45 || code === 48) return ['Fog', '\uD83C\uDF2B'];
+    if (code >= 51 && code <= 57) return ['Drizzle', '\uD83C\uDF26'];
+    if ((code >= 61 && code <= 67) || (code >= 80 && code <= 82)) return ['Rain', '\uD83C\uDF27'];
+    if ((code >= 71 && code <= 77) || code === 85 || code === 86) return ['Snow', '\u2744\uFE0F'];
+    if (code >= 95) return ['Thunderstorm', '\u26C8'];
+    return ['', ''];
+  }
+  function wxClock(offset) {
+    var d = new Date(Date.now() + offset * 1000), h = d.getUTCHours(), m = d.getUTCMinutes();
+    return (h % 12 || 12) + ':' + (m < 10 ? '0' : '') + m + (h < 12 ? ' AM' : ' PM');
+  }
+  function renderWeather() {
+    if (!places.length) {
+      $('wxName').textContent = 'Weather'; $('wxTime').textContent = ''; $('wxTemp').textContent = '\u2013';
+      $('wxSub').textContent = Date.now() < wxUpdating ? 'Updating\u2026' : 'Hold to pick cities'; $('wxIcon').textContent = ''; $('wxDots').innerHTML = '';
+      return;
+    }
+    if (wxIdx >= places.length) wxIdx = 0;
+    var p = places[wxIdx], look = wxLook(p.code, p.day), f = Math.round(p.temp * 9 / 5 + 32);
+    var wide = $('wx').offsetWidth >= 220;
+    // Narrow card: city only (no state, no clock) so the title fits.
+    $('wxName').textContent = wide ? p.name : p.name.split(',')[0];
+    $('wxTime').textContent = wide ? wxClock(p.offset) : '';
+    $('wxTemp').textContent = Math.round(p.temp) + '\u00B0C';
+    $('wxSub').textContent = f + '\u00B0F' + (wide && look[0] ? ' \u00B7 ' + look[0] : '');
+    $('wxIcon').textContent = look[1];
+    var dots = '';
+    for (var i = 0; i < places.length; i++) dots += '<i' + (i === wxIdx ? ' class="on"' : '') + '></i>';
+    $('wxDots').innerHTML = dots;
+  }
+  function nextPlace() {
+    if (places.length < 2) return renderWeather();
+    $('wxBody').className = 'fade';
+    setTimeout(function () { wxIdx = (wxIdx + 1) % places.length; renderWeather(); $('wxBody').className = ''; }, 300);
+  }
+  setInterval(nextPlace, 6000);
+  tap($('wx'), nextPlace, openWxEditor);
+
+  // City picker: search on the Mac (Open-Meteo geocoding), pick up to wxMax, reorder, save.
+  var wxDraft = [], wxMax = 6, wxResults = [], wxSearchTimer = null, wxSearchSeq = 0;
+  function openWxEditor() {
+    xhr('GET', url('/weather/places'), null, function (s, text) {
+      if (s !== 200) return toast('Could not load cities');
+      var d = JSON.parse(text);
+      wxDraft = d.places || []; wxMax = d.max || 6; wxResults = [];
+      $('wxQ').value = '';
+      sheet('wxEdit', true);
+      renderWxEditor();
+    });
+  }
+  function wxHas(p) {
+    for (var i = 0; i < wxDraft.length; i++) if (wxDraft[i].name === p.name) return true;
+    return false;
+  }
+  function wxRow(p, idx, detail) {
+    var on = idx >= 0, full = !on && wxDraft.length >= wxMax, row = document.createElement('div');
+    row.className = 'erow city' + (on ? ' on' : '') + (full ? ' full' : '');
+    row.innerHTML = '<div class="ck">' + (on ? idx + 1 : '+') + '</div><div class="nm"></div>' +
+      (on ? '<div class="rm">\u2715</div>' : '') + (idx > 0 ? '<div class="up">\u25B2</div>' : '');
+    var nm = row.children[1];
+    nm.textContent = p.name;
+    if (detail) { var sp = document.createElement('span'); sp.textContent = detail; nm.appendChild(sp); }
+    if (on) {
+      row.children[2].addEventListener('click', function (e) { e.stopPropagation(); wxDraft.splice(idx, 1); renderWxEditor(); });
+      if (idx > 0) row.lastChild.addEventListener('click', function (e) {
+        e.stopPropagation(); wxDraft.splice(idx, 1); wxDraft.splice(idx - 1, 0, p); renderWxEditor();
+      });
+    } else {
+      row.addEventListener('click', function () {
+        if (full) return toast('Up to ' + wxMax + ' cities: remove one first');
+        wxDraft.push({ name: p.name, lat: p.lat, lon: p.lon }); renderWxEditor();
+      });
+    }
+    return row;
+  }
+  function renderWxEditor() {
+    var box = $('wxList');
+    box.innerHTML = '';
+    $('wxCount').textContent = wxDraft.length + ' of ' + wxMax + ' cities \u00B7 \u2715 removes \u00B7 \u25B2 moves earlier';
+    wxDraft.forEach(function (p, i) { box.appendChild(wxRow(p, i, '')); });
+    var q = $('wxQ').value.replace(/^\s+|\s+$/g, '');
+    if (q.length < 2) return;
+    var head = document.createElement('div'); head.className = 'wxHead';
+    var fresh = wxResults.filter(function (r) { return !wxHas(r); });
+    head.textContent = wxResults.searching ? 'Searching\u2026' : fresh.length ? 'Tap to add' : 'No cities found';
+    box.appendChild(head);
+    fresh.forEach(function (r) { box.appendChild(wxRow(r, -1, r.detail)); });
+  }
+  $('wxQ').addEventListener('input', function () {
+    clearTimeout(wxSearchTimer);
+    var q = $('wxQ').value.replace(/^\s+|\s+$/g, '');
+    if (q.length < 2) { wxResults = []; return renderWxEditor(); }
+    wxResults = []; wxResults.searching = true; renderWxEditor();
+    wxSearchTimer = setTimeout(function () {
+      var seq = ++wxSearchSeq;
+      xhr('GET', url('/weather/search', 'q=' + encodeURIComponent(q)), null, function (s, text) {
+        if (seq !== wxSearchSeq) return;   // an older search finished after a newer one started
+        wxResults = s === 200 ? (JSON.parse(text).results || []) : [];
+        renderWxEditor();
+      });
+    }, 400);
+  });
+  tap($('wxCancel'), function () { sheet('wxEdit', false); });
+  tap($('wxSave'), function () {
+    xhr('POST', url('/weather/places'), 'places=' + encodeURIComponent(JSON.stringify(wxDraft)), function (s) {
+      if (s !== 200) return toast('Save failed');
+      sheet('wxEdit', false); toast('Cities saved');
+      places = []; wxIdx = 0; wxUpdating = Date.now() + 20000; renderWeather();
+      setTimeout(pollStats, 2500);
+    });
+  });
+
   function pollStats() {
     if (view !== 'deck') return;
     xhr('GET', url('/stats'), null, function (s, text) {
@@ -624,6 +930,7 @@
       $('netTitle').textContent = sp.running ? 'Testing…' : 'Internet';
       drawSpark(d.net.history);
       renderBatteries(d.batteries);
+      if (d.weather) { places = d.weather; renderWeather(); if (places.length) buildSky(places[0]); }
       renderMusic(d.music);
     });
   }

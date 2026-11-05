@@ -82,6 +82,8 @@ let stats = Stats()
 stats.start()
 let music = Music()
 music.start()
+let weather = Weather()
+weather.start()
 
 // MARK: Routes
 
@@ -119,6 +121,7 @@ let routes: (HTTPRequest, HTTPConnection) -> Void = { req, conn in
     case ("GET", "/stats"):
         var snap = stats.snapshot()
         snap["music"] = music.snapshot()
+        snap["weather"] = weather.snapshot()
         conn.respondJSON(snap)
     case ("POST", "/speedtest"):
         stats.runSpeedTest()
@@ -127,6 +130,14 @@ let routes: (HTTPRequest, HTTPConnection) -> Void = { req, conn in
         let cmd = p["cmd"] ?? ""
         if cmd == "open" { DispatchQueue.global().async { music.openPlayer() } } else { music.control(cmd) }
         conn.respond(text: "ok")
+    case ("GET", "/weather/places"):
+        conn.respondJSON(["places": weather.placeList(), "max": Weather.maxPlaces])
+    case ("POST", "/weather/places"):
+        // Body: places=<JSON array of {name, lat, lon}> in display order.
+        do { conn.respondJSON(["saved": try weather.save(json: p["places"] ?? "[]")]) }
+        catch { conn.respond(500, text: error.localizedDescription) }
+    case ("GET", "/weather/search"):
+        weather.search(p["q"] ?? "") { results in server.queue.async { conn.respondJSON(["results": results]) } }
     case ("GET", "/artwork"):
         guard let art = music.artwork() else { return conn.respond(404, text: "no artwork") }
         conn.respond(200, "image/jpeg", art)
