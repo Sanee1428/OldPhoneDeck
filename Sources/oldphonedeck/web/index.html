@@ -122,6 +122,15 @@
   .arrow { color: #64d2ff; font-weight: 700; }
   .arrow.up { color: #30d158; }
   #spark { display: block; margin-top: 6px; }
+  /* Live upload line under the big download number, and a pulsing "live" dot by the title */
+  .sub.upl { font-size: 14px; font-weight: 600; color: #f5f5f7; letter-spacing: -.3px; margin-top: 2px; }
+  .sub.upl small { font-size: 9.5px; font-weight: 600; color: #8e8e93; letter-spacing: 0; margin-left: 3px; }
+  body.sky .sub.upl { color: #fff; }
+  body.sky .sub.upl small { color: rgba(235,240,250,.78); }
+  #netLive { display: inline-block; width: 5px; height: 5px; border-radius: 3px; background: #30d158; margin-left: 5px; vertical-align: 1px;
+    -webkit-animation: netPulse 2s ease-in-out infinite; animation: netPulse 2s ease-in-out infinite; }
+  @-webkit-keyframes netPulse { 0%, 100% { opacity: 1; } 50% { opacity: .3; } }
+  @keyframes netPulse { 0%, 100% { opacity: 1; } 50% { opacity: .3; } }
   .foot { position: absolute; left: 12px; right: 12px; bottom: 9px; font-size: 9px; color: #636366; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   /* Batteries: compact chips, icon + percentage */
   .chip { float: left; width: 50%; height: 30px; position: relative; box-sizing: border-box; padding-right: 6px; }
@@ -261,9 +270,9 @@
       </div>
     </div>
     <div id="net" class="card">
-      <h3 id="netTitle">Internet</h3>
-      <div class="big"><span class="arrow">↓</span> <span id="down">–</span><small>Mbps</small></div>
-      <div class="sub"><span class="arrow up">↑</span> <span id="up">–</span> Mbps · <span id="ping">–</span> ms</div>
+      <h3><span id="netTitle">Internet</span><i id="netLive"></i></h3>
+      <div class="big"><span class="arrow">↓</span> <span id="down">–</span><small id="downU">Mbps</small></div>
+      <div class="sub upl"><span class="arrow up">↑</span> <span id="up">–</span><small id="upU">Mbps</small></div>
       <canvas id="spark" width="208" height="36"></canvas>
     </div>
     <div id="bat" class="card"><h3>Batteries</h3><div id="batList"></div></div>
@@ -368,12 +377,18 @@
   }
   // Tap handler: instant on touch (no 300 ms delay), works with a mouse too, shows a pressed state.
   function tap(el, fn, hold) {
-    var moved, held, timer;
+    var moved, held, timer, sx = 0, sy = 0;
     el.addEventListener('touchstart', function (e) {
       moved = false; held = false; el.className += ' down';
+      var t = e.touches && e.touches[0]; sx = t ? t.clientX : 0; sy = t ? t.clientY : 0;
       if (hold) timer = setTimeout(function () { held = true; unpress(); hold(e); }, 550);
     });
-    el.addEventListener('touchmove', function () { moved = true; clearTimeout(timer); unpress(); });
+    el.addEventListener('touchmove', function (e) {
+      // A resting finger still wobbles a few pixels; only a real drag cancels a tap or hold.
+      var t = e.touches && e.touches[0];
+      if (t && Math.abs(t.clientX - sx) < 10 && Math.abs(t.clientY - sy) < 10) return;
+      moved = true; clearTimeout(timer); unpress();
+    });
     el.addEventListener('touchend', function (e) {
       e.preventDefault(); clearTimeout(timer); unpress();
       if (!moved && !held) fn(e);
@@ -445,7 +460,7 @@
     var spark = $('spark'), sw = cardW - 24, sh = 18;
     spark.width = sw * 2; spark.height = sh * 2;
     px(spark, { width: sw, height: sh });
-    drawSpark(lastHistory); renderBatteries(lastBatteries); renderWeather();
+    drawSpark(lastHistory, lastHistoryUp); renderBatteries(lastBatteries); renderWeather();
   }
   window.addEventListener('resize', fit);
   window.addEventListener('orientationchange', function () { setTimeout(fit, 300); });
@@ -622,23 +637,35 @@
     var s = Math.round((Date.now() - ms) / 1000);
     return s < 60 ? 'just now' : s < 3600 ? Math.round(s / 60) + ' min ago' : Math.round(s / 3600) + ' h ago';
   }
-  var lastHistory = [];
-  function drawSpark(hist) {
-    lastHistory = hist || [];
+  // Live speed, auto-scaled: under 1 Mbps shows kbps, so a quiet connection still reads as a number.
+  function rate(mbps) {
+    mbps = mbps || 0;
+    if (mbps < 1) { var k = mbps * 1000; return [k < 10 ? k.toFixed(1) : String(Math.round(k)), 'kbps']; }
+    return [String(fmt(mbps)), 'Mbps'];
+  }
+  // Last 60 s: download (blue, filled) and upload (green line), on one shared scale.
+  var lastHistory = [], lastHistoryUp = [];
+  function drawSpark(hist, histUp) {
+    lastHistory = hist || []; lastHistoryUp = histUp || lastHistoryUp;
     var c = $('spark'), g = c.getContext('2d'), w = c.width, h = c.height;
     g.clearRect(0, 0, w, h);
     if (lastHistory.length < 2) return;
-    var max = 1; lastHistory.forEach(function (v) { if (v > max) max = v; });
-    g.beginPath();
-    lastHistory.forEach(function (v, i) {
-      var x = i * w / (lastHistory.length - 1), y = h - 3 - (v / max) * (h - 6);
-      if (i) g.lineTo(x, y); else g.moveTo(x, y);
-    });
+    var max = .05;
+    lastHistory.concat(lastHistoryUp).forEach(function (v) { if (v > max) max = v; });
+    function line(data) {
+      g.beginPath();
+      data.forEach(function (v, i) {
+        var x = i * w / (data.length - 1), y = h - 3 - (v / max) * (h - 6);
+        if (i) g.lineTo(x, y); else g.moveTo(x, y);
+      });
+    }
+    line(lastHistory);
     g.strokeStyle = '#64d2ff'; g.lineWidth = 2.5; g.lineJoin = 'round'; g.stroke();
     g.lineTo(w, h); g.lineTo(0, h); g.closePath();
     var grad = g.createLinearGradient(0, 0, 0, h);
     grad.addColorStop(0, 'rgba(100,210,255,.35)'); grad.addColorStop(1, 'rgba(100,210,255,0)');
     g.fillStyle = grad; g.fill();
+    if (lastHistoryUp.length > 1) { line(lastHistoryUp); g.strokeStyle = '#30d158'; g.lineWidth = 2; g.stroke(); }
   }
   // Small line icons per device kind, drawn like SF Symbols.
   var ICONS = {
@@ -975,21 +1002,37 @@
       if (s !== 200) return;
       var d = JSON.parse(text);
       $('macName').textContent = d.mac.replace(/^\S+['’]s?\s+/, '');
+      // Live: what the Mac is downloading/uploading right now (all Wi-Fi/Ethernet traffic, sampled every second).
+      // Average of the last 5 one-second samples, to match the 5 s refresh.
+      function avg5(h, fallback) {
+        var last = (h || []).slice(-5), sum = 0;
+        if (!last.length) return fallback || 0;
+        for (var i = 0; i < last.length; i++) sum += last[i];
+        return sum / last.length;
+      }
+      var dn = rate(avg5(d.net.history, d.net.rx)), upr = rate(avg5(d.net.historyUp, d.net.tx));
+      $('down').textContent = dn[0]; $('downU').textContent = dn[1];
+      $('up').textContent = upr[0]; $('upU').textContent = upr[1];
+      // Speed test (tap the tile): the result pops up when it finishes.
       var sp = d.speed || {};
-      $('down').textContent = sp.down !== undefined ? fmt(sp.down) : '–';
-      $('up').textContent = sp.up !== undefined ? fmt(sp.up) : '–';
-      $('ping').textContent = sp.ping !== undefined ? Math.round(sp.ping) : '–';
-      $('net').title = sp.at ? 'Tested ' + ago(sp.at) : '';
       $('netTitle').textContent = sp.running ? 'Testing…' : 'Internet';
-      drawSpark(d.net.history);
+      if (speedAsked && !sp.running && sp.at && sp.at !== speedAt) {
+        speedAsked = false;
+        toast('Speed test: \u2193 ' + fmt(sp.down || 0) + ' \u2191 ' + fmt(sp.up || 0) + ' Mbps \u00B7 ' + Math.round(sp.ping || 0) + ' ms');
+      }
+      if (!speedAsked) speedAt = sp.at;
+      drawSpark(d.net.history, d.net.historyUp);
       renderBatteries(d.batteries);
       if (d.weather) { places = d.weather; renderWeather(); if (places.length) buildSky(places[0]); }
       renderMusic(d.music);
     });
   }
-  setInterval(pollStats, 2000);
+  var speedAsked = false, speedAt = null;
+  setInterval(pollStats, 5000);   // refresh the widgets every 5 s
   tap($('net'), function () {
-    xhr('POST', url('/speedtest'), '', function () { $('netTitle').textContent = 'Testing…'; toast('Running a speed test (~20 s)'); });
+    xhr('POST', url('/speedtest'), '', function () {
+      speedAsked = true; $('netTitle').textContent = 'Testing…'; toast('Running a speed test (~20 s)');
+    });
   });
 
   // ---------- now playing (Spotify / Apple Music on the Mac) ----------
