@@ -138,8 +138,9 @@
   /* Weather: one place at a time, rotating; tap for the next */
   #wx h3 { white-space: nowrap; overflow: hidden; }
   #wxTime { float: right; letter-spacing: 0; }
-  #wxBody { -webkit-transition: opacity .3s; transition: opacity .3s; }
-  #wxBody.fade { opacity: 0; }
+  /* The slide (city name + temperature) moves as one; it covers the card so the icon keeps its place. */
+  #wx { touch-action: none; -ms-touch-action: none; }   /* the tile handles its own swipes; Safari must not take them */
+  #wxSlide { position: absolute; left: 0; top: 0; right: 0; bottom: 0; padding: 11px 12px; box-sizing: border-box; }
   #wxLine { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 26px; }
   #wxTemp { font-size: 19px; font-weight: 600; letter-spacing: -.6px; }
   #wxSub { font-size: 10.5px; color: #c7c7cc; margin-left: 5px; }
@@ -267,8 +268,10 @@
     </div>
     <div id="bat" class="card"><h3>Batteries</h3><div id="batList"></div></div>
     <div id="wx" class="card">
-      <h3><span id="wxTime"></span><span id="wxName">Weather</span></h3>
-      <div id="wxBody"><div id="wxLine"><span id="wxTemp">–</span><span id="wxSub"></span></div><div id="wxIcon"></div></div>
+      <div id="wxSlide">
+        <h3><span id="wxTime"></span><span id="wxName">Weather</span></h3>
+        <div id="wxBody"><div id="wxLine"><span id="wxTemp">–</span><span id="wxSub"></span></div><div id="wxIcon"></div></div>
+      </div>
       <div id="wxDots"></div>
     </div>
   </div>
@@ -833,13 +836,63 @@
     for (var i = 0; i < places.length; i++) dots += '<i' + (i === wxIdx ? ' class="on"' : '') + '></i>';
     $('wxDots').innerHTML = dots;
   }
-  function nextPlace() {
-    if (places.length < 2) return renderWeather();
-    $('wxBody').className = 'fade';
-    setTimeout(function () { wxIdx = (wxIdx + 1) % places.length; renderWeather(); $('wxBody').className = ''; }, 300);
+  // Swipe the tile left/right to move between cities (tap = next, hold = pick cities).
+  // It also moves on its own every 6 s, pausing for 15 s after you swipe or tap.
+  var wxPause = 0, wxBusy = false;
+  function wxMove(x, animate) {
+    var sl = $('wxSlide'), w = $('wx').offsetWidth || 1;
+    sl.style.webkitTransition = animate ? '-webkit-transform .22s ease-out, opacity .22s' : 'none';
+    sl.style.transition = animate ? 'transform .22s ease-out, opacity .22s' : 'none';
+    sl.style.webkitTransform = sl.style.transform = 'translate3d(' + Math.round(x) + 'px,0,0)';
+    sl.style.opacity = Math.max(0, 1 - Math.abs(x) / w).toFixed(2);
   }
-  setInterval(nextPlace, 6000);
+  function wxGo(dir, manual) {                 // dir: 1 = next city, -1 = previous
+    if (manual) wxPause = Date.now() + 15000;
+    if (places.length < 2 || wxBusy) { wxMove(0, true); return; }
+    var sl = $('wxSlide'), w = $('wx').offsetWidth;
+    wxBusy = true;
+    wxMove(-dir * w, true);                      // slide the current city out…
+    setTimeout(function () {
+      wxIdx = (wxIdx + dir + places.length) % places.length;
+      renderWeather();
+      wxMove(dir * w, false);                    // …put the next one just off the other edge…
+      void sl.offsetWidth;                       // (apply that before animating)
+      wxMove(0, true);                           // …and slide it in.
+      setTimeout(function () { wxBusy = false; }, 230);
+    }, 220);
+  }
+  function nextPlace() { wxGo(1, true); }
+  setInterval(function () { if (Date.now() > wxPause && view === 'deck') wxGo(1, false); }, 6000);
   tap($('wx'), nextPlace, openWxEditor);
+  (function () {
+    var el = $('wx'), x0 = null, y0 = 0, dx = 0, t0 = 0, swiping = false, scale = 1;
+    el.addEventListener('touchstart', function (e) {
+      var t = e.touches[0]; x0 = t.clientX; y0 = t.clientY; dx = 0; t0 = Date.now(); swiping = false;
+      scale = (el.getBoundingClientRect().width / el.offsetWidth) || 1;   // the stage is scaled to fit the screen
+    });
+    el.addEventListener('touchmove', function (e) {
+      // Always claim the gesture: otherwise iOS Safari starts its own pan and cancels the touch mid-swipe.
+      e.preventDefault();
+      if (x0 === null || wxBusy) return;
+      var t = e.touches[0], mx = t.clientX - x0, my = t.clientY - y0;
+      if (!swiping && Math.abs(mx) > 6 && Math.abs(mx) > Math.abs(my)) swiping = true;
+      if (!swiping) return;
+      dx = mx / scale;
+      if (places.length < 2) dx = dx / 4;       // only one city: a little give, then it springs back
+      wxMove(dx, false);
+    });
+    function finish() {
+      if (x0 === null) return;
+      x0 = null;
+      if (!swiping) return;
+      // A long drag, or a quick flick, changes city; anything less springs back.
+      var flick = Math.abs(dx) > 15 && Date.now() - t0 < 300;
+      if ((Math.abs(dx) > 30 || flick) && places.length > 1) wxGo(dx < 0 ? 1 : -1, true);
+      else { wxPause = Date.now() + 15000; wxMove(0, true); }
+    }
+    el.addEventListener('touchend', finish);
+    el.addEventListener('touchcancel', finish);   // iOS can still cancel (e.g. a notification); finish cleanly
+  })();
 
   // City picker: search on the Mac (Open-Meteo geocoding), pick up to wxMax, reorder, save.
   var wxDraft = [], wxMax = 6, wxResults = [], wxSearchTimer = null, wxSearchSeq = 0;
